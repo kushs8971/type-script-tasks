@@ -4,3 +4,6 @@ node_modules/
 # ENV Variables
 .env
 .env.*
+
+# Dist
+dist/
