@@ -35,7 +35,7 @@ export const loginController = (req: Request, res: Response) => {
           const response: BaseResponse = {
             status: false,
             statusCode: 500,
-            message: error.message,
+            message: error.message || "Database error",
           };
           return res.status(500).json(response);
         }
@@ -100,7 +100,7 @@ export const loginController = (req: Request, res: Response) => {
               const response: BaseResponse = {
                 status: false,
                 statusCode: 500,
-                message: "Error saving refresh token",
+                message: insertError.message || "Error saving refresh token",
               };
               return res.status(500).json(response);
             }
@@ -122,7 +122,10 @@ export const loginController = (req: Request, res: Response) => {
         const response: BaseResponse = {
           status: false,
           statusCode: 500,
-          message: err instanceof Error ? err.message : "Unexpected error",
+          message:
+            err instanceof Error && err.message
+              ? err.message
+              : JSON.stringify(err),
         };
         return res.status(500).json(response);
       }
@@ -132,7 +135,10 @@ export const loginController = (req: Request, res: Response) => {
     const response: BaseResponse = {
       status: false,
       statusCode: 500,
-      message: err instanceof Error ? err.message : "Unexpected error",
+      message:
+        err instanceof Error && err.message
+          ? err.message
+          : JSON.stringify(err),
     };
     return res.status(500).json(response);
   }
