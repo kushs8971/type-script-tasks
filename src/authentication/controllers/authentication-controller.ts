@@ -117,10 +117,12 @@ export const loginController = (req: Request, res: Response) => {
       );
     });
   } catch (err: any) {
+    console.error("Login error:", err);
+    const message = err instanceof Error ? err.message : String(err);
     const response: BaseResponse = {
       status: false,
       statusCode: 500,
-      message: err.message,
+      message: message
     };
     return res.status(500).json(response);
   }
