@@ -30,91 +30,102 @@ export const loginController = (req: Request, res: Response) => {
     const query: string = "SELECT * FROM users WHERE email = ?";
 
     db.query(query, [loginData.email], async (error, results) => {
-      const rows = results as RowDataPacket[];
+      try {
+        if (error) {
+          const response: BaseResponse = {
+            status: false,
+            statusCode: 500,
+            message: error.message,
+          };
+          return res.status(500).json(response);
+        }
 
-      if (error) {
+        const rows = results as RowDataPacket[];
+
+        if (rows.length === 0) {
+          const response: BaseResponse = {
+            status: false,
+            statusCode: 401,
+            message: "Invalid Email Or Password!",
+          };
+          return res.status(401).json(response);
+        }
+
+        const user = rows[0];
+
+        const passwordMatched: boolean = await bcrypt.compare(
+          loginData.password,
+          user.password
+        );
+
+        if (!passwordMatched) {
+          const response: BaseResponse = {
+            status: false,
+            statusCode: 401,
+            message: "Invalid Email Or Password!",
+          };
+          return res.status(401).json(response);
+        }
+
+        const accessToken: string = jwt.sign(
+          {
+            user_id: user.user_id,
+            name: user.name,
+            email: user.email,
+          },
+          process.env.JWT_SECRET as string,
+          { expiresIn: process.env.JWT_EXPIRATION as string }
+        );
+
+        const refreshToken: string = jwt.sign(
+          {
+            user_id: user.user_id,
+            name: user.name,
+            email: user.email,
+          },
+          process.env.JWT_SECRET as string,
+          { expiresIn: process.env.JWT_REFRESH_EXPIRATION as string }
+        );
+
+        const insertRefreshQuery: string =
+          "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)";
+
+        const expiresAt = getRefreshExpiry();
+
+        db.query(
+          insertRefreshQuery,
+          [user.user_id, refreshToken, expiresAt],
+          (insertError) => {
+            if (insertError) {
+              const response: BaseResponse = {
+                status: false,
+                statusCode: 500,
+                message: "Error saving refresh token",
+              };
+              return res.status(500).json(response);
+            }
+
+            const response: BaseResponse = {
+              status: true,
+              statusCode: 200,
+              message: "You're in!",
+              data: {
+                token: accessToken,
+                refreshToken: refreshToken,
+              },
+            };
+            return res.status(200).json(response);
+          }
+        );
+      } catch (err) {
+        console.error("Login callback error:", err);
         const response: BaseResponse = {
           status: false,
           statusCode: 500,
-          message: error.message,
+          message: err instanceof Error ? err.message : "Unexpected error",
         };
         return res.status(500).json(response);
       }
-      if (rows.length === 0) {
-        const response: BaseResponse = {
-          status: false,
-          statusCode: 401,
-          message: "Invalid Email Or Password!",
-        };
-        return res.status(401).json(response);
-      }
-
-      const user = rows[0];
-
-      const passwordMatched: boolean = await bcrypt.compare(
-        loginData.password,
-        user.password
-      );
-
-      if (!passwordMatched) {
-        const response: BaseResponse = {
-          status: false,
-          statusCode: 401,
-          message: "Invalid Email Or Password!",
-        };
-        return res.status(401).json(response);
-      }
-
-      const accessToken: string = jwt.sign(
-        {
-          user_id: user.user_id,
-          name: user.name,
-          email: user.email,
-        },
-        process.env.JWT_SECRET as string,
-        { expiresIn: process.env.JWT_EXPIRATION as string }
-      );
-
-      const refreshToken: string = jwt.sign(
-        {
-          user_id: user.user_id,
-          name: user.name,
-          email: user.email,
-        },
-        process.env.JWT_SECRET as string,
-        { expiresIn: process.env.JWT_REFRESH_EXPIRATION as string }
-      );
-
-      const insertRefreshQuery: string =
-        "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)";
-
-      const expiresAt = getRefreshExpiry();
-
-      db.query(
-        insertRefreshQuery,
-        [user.user_id, refreshToken, expiresAt],
-        (insertError) => {
-          if (insertError) {
-            const response: BaseResponse = {
-              status: false,
-              statusCode: 500,
-              message: "Error saving refresh token",
-            };
-            return res.status(500).json(response);
-          }
-
-          const response: BaseResponse = {
-            status: true,
-            statusCode: 200,
-            message: "You're in!",
-            data: {
-              token: accessToken,
-              refreshToken: refreshToken,
-            },
-          };
-          return res.status(200).json(response);
-        }
-      );
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -126,7 +137,6 @@ export const loginController = (req: Request, res: Response) => {
     return res.status(500).json(response);
   }
 };
-
 
 export const signupController = async (req: Request, res: Response) => {
   try {
