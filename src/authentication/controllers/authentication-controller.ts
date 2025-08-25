@@ -116,17 +116,17 @@ export const loginController = (req: Request, res: Response) => {
         }
       );
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Login error:", err);
-    const message = err instanceof Error ? err.message : String(err);
     const response: BaseResponse = {
       status: false,
       statusCode: 500,
-      message: message
+      message: err instanceof Error ? err.message : "Unexpected error",
     };
     return res.status(500).json(response);
   }
 };
+
 
 export const signupController = async (req: Request, res: Response) => {
   try {
