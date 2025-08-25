@@ -116,7 +116,7 @@ export const loginController = (req: Request, res: Response) => {
         }
       );
     });
-  } catch (err) {
+  } catch (err: any) {
     const response: BaseResponse = {
       status: false,
       statusCode: 500,
